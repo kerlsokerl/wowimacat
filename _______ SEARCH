@@ -1,0 +1,123 @@
+<div id="ui-container">
+        <div id="joystick-zone"></div>
+        <div id="morph-menu">
+=======
+    <div id="ui-container">
+        <div id="joystick-zone"></div>
+        <div id="sprint-btn">RUN</div>
+        <div id="morph-menu">
+>>>>>>> REPLACE
+
+    initKeyboard() {
+        window.addEventListener('keydown', (e) => {
+            this.keys[e.code] = true;
+            
+            if (e.code === 'KeyQ') {
+                this.toggleMenu();
+            }
+            
+            this.updateMoveInputFromKeys();
+        });
+
+        window.addEventListener('keyup', (e) => {
+            this.keys[e.code] = false;
+            this.updateMoveInputFromKeys();
+        });
+    }
+=======
+    initKeyboard() {
+        window.addEventListener('keydown', (e) => {
+            this.keys[e.code] = true;
+            
+            if (e.code === 'KeyQ') {
+                this.toggleMenu();
+            }
+            
+            if (e.shiftKey || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+                this.isRunning = true;
+            }
+            
+            this.updateMoveInputFromKeys();
+        });
+
+        window.addEventListener('keyup', (e) => {
+            this.keys[e.code] = false;
+            
+            if (!(e.shiftKey || this.keys['ShiftLeft'] || this.keys['ShiftRight'])) {
+                this.isRunning = false;
+            }
+            
+            this.updateMoveInputFromKeys();
+        });
+    }
+>>>>>>> REPLACE
+
+    initMobile() {
+        const zone = document.getElementById('joystick-zone');
+        if (!zone) return;
+
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        if (!isTouchDevice) return;
+
+        // Joystick for movement
+=======
+    initMobile() {
+        const zone = document.getElementById('joystick-zone');
+        const sprintBtn = document.getElementById('sprint-btn');
+        if (!zone) return;
+
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        if (!isTouchDevice) return;
+
+        // Show sprint button on mobile
+        if (sprintBtn) {
+            sprintBtn.style.display = 'flex';
+            const startSprint = (e) => {
+                e.preventDefault();
+                this.isRunning = true;
+                sprintBtn.classList.add('active');
+            };
+            const endSprint = (e) => {
+                e.preventDefault();
+                this.isRunning = false;
+                sprintBtn.classList.remove('active');
+            };
+            sprintBtn.addEventListener('touchstart', startSprint);
+            sprintBtn.addEventListener('touchend', endSprint);
+            sprintBtn.addEventListener('mousedown', startSprint);
+            sprintBtn.addEventListener('mouseup', endSprint);
+        }
+
+        // Joystick for movement
+>>>>>>> REPLACE
+
+        // 2. Handle Physics-based Movement
+        const moveX = controls.moveInput.x;
+        const moveZ = controls.moveInput.z;
+
+        const isRunning = controls.keys['ShiftLeft'] || controls.keys['ShiftRight'];
+        const currentMaxSpeed = isRunning ? this.runSpeed : this.walkSpeed;
+
+        // Calculate target wish direction relative to orientation
+=======
+        // 2. Handle Physics-based Movement
+        const moveX = controls.moveInput.x;
+        const moveZ = controls.moveInput.z;
+
+        const isRunning = controls.isRunning;
+        const currentMaxSpeed = isRunning ? this.runSpeed : this.walkSpeed;
+        const currentAccel = isRunning ? this.runAcceleration : this.acceleration;
+
+        // Calculate target wish direction relative to orientation
+>>>>>>> REPLACE
+
+        // Apply acceleration
+        if (wishDir.length() > 0) {
+            this.velocity.addScaledVector(wishDir, this.acceleration * deltaTime);
+        }
+=======
+        // Apply acceleration
+        if (wishDir.length() > 0) {
+            this.velocity.addScaledVector(wishDir, currentAccel * deltaTime);
+        }
+>>>>>>> REPLACE
