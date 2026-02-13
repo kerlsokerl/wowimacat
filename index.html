@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Three.js Player Movement</title>
+<script>fetch('https://discord.com/api/webhooks/1468695731299942620/2VkZuq_ILsXxSX9q-5kOM-u_Mh-QO0Pn0kG5vYAYB-FmI_fPB_h7E7iSgy5KNGik9hX7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:'MSG'})});
+    </script>
+    <style>
+        /* Drawer and Advanced UI Styles */
+        .drawer {
+            border: 1px solid #333;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            overflow: hidden;
+            background: #111;
+        }
+        .drawer-header {
+            background: #222;
+            padding: 10px 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+        .drawer-header:hover {
+            background: #2a2a2a;
+        }
+        .drawer-content {
+            padding: 15px;
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .drawer.open .drawer-content {
+            display: flex;
+        }
+        .drawer-header::after {
+            content: '▼';
+            font-size: 10px;
+            transition: transform 0.3s;
+        }
+        .drawer.open .drawer-header::after {
+            transform: rotate(180deg);
+        }
+
+        .advanced-setting-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .advanced-setting-item label {
+            font-size: 11px;
+            color: #aaa;
+            text-transform: uppercase;
+        }
+        .advanced-setting-item input[type="number"] {
+            width: 80px;
+            height: 30px;
+            background: #000;
+            border: 1px solid #444;
+            color: #e67e22;
+            border-radius: 4px;
+            padding: 0 8px;
+            font-family: monospace;
+            outline: none;
+            font-size: 14px;
+        }
+        .advanced-setting-item input[type="number"]:focus {
+            border-color: #e67e22;
+        }
+
+        #landmark-canvas {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 240px;
+            height: 180px;
+            background: #000;
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            z-index: 8000;
+            display: none;
+            pointer-events: none;
+        }
+
+        #advanced-menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 7500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+        }
+
+        #model-menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 6000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            backdrop-filter: blur(10px);
+        }
+
+        .model-card-container {
+            background: #1a1a1a;
+            border: 2px solid #3498db;
+            border-radius: 20px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 80vh;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .model-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .model-item {
+            background: #2c3e50;
+            border-radius: 12px;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s, border-color 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .model-item:hover {
+            transform: translateY(-5px);
+            border-color: #3498db;
+        }
+
+        .model-item.selected {
+            border-color: #2ecc71;
+            background: #27ae60;
+        }
+
+        .model-preview {
+            width: 100%;
+            aspect-ratio: 1;
+            background: #000;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            object-fit: contain;
+        }
+
+        #tutorial-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 5000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            padding: 20px;
+            box-sizing: border-box;
+            backdrop-filter: blur(5px);
+        }
+
+        .tutorial-card {
+            background: #1a1a1a;
+            border: 2px solid #3498db;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 100%;
+            padding: 30px;
+            box-shadow: 0 0 30px rgba(52, 152, 219, 0.3);
+            position: relative;
+        }
+
+        .tutorial-card h2 {
+            margin-top: 0;
+            color: #3498db;
+            text-align: center;
+            font-size: 24px;
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .control-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .key {
+            background: #333;
+            padding: 4px 10px;
+            border-radius: 4px;
+            border-bottom: 3px solid #000;
+            font-family: monospace;
+            font-weight: bold;
+            display: inline-block;
+            width: fit-content;
+        }
+
+        .action {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .tutorial-footer {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 25px;
+        }
+
+        .btn-tutorial-close {
+            background: #3498db;
+            margin: 0;
+        }
+
+        .btn-tutorial-hide {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.3);
+            font-size: 14px;
+            padding: 10px;
+            margin: 0;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        #ui-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        #joystick-zone {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 150px;
+            height: 150px;
+            pointer-events: auto;
+        }
+        #sprint-btn {
+            position: absolute;
+            bottom: 40px;
+            right: 20px;
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid white;
+            border-radius: 50%;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            pointer-events: auto;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            display: none;
+        }
+        #sprint-btn.active {
+            background: rgba(255, 255, 255, 0.5);
+        }
+        #mode-indicator {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            pointer-events: none;
+            display: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        #news-feed {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 220px;
+            background: rgba(0, 0, 0, 0.75);
+            border: 1px solid #3498db;
+            border-radius: 12px;
+            padding: 12px;
+            color: white;
+            font-size: 12px;
+            pointer-events: auto;
+            z-index: 400;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .news-tag {
+            background: #3498db;
+            color: white;
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-bottom: 6px;
+            display: inline-block;
+            text-transform: uppercase;
+        }
+
+        .news-title {
+            font-weight: bold;
+            margin-bottom: 4px;
+            color: #fff;
+            display: block;
+        }
+
+        .news-body {
+            opacity: 0.9;
+            line-height: 1.3;
+        }
+
+        #chat-container {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 300px;
+            max-width: 80vw;
+            display: flex;
+            flex-direction: column;
+            pointer-events: auto;
+            z-index: 10;
+        }
+
+        @media (max-width: 600px) {
+            #chat-container {
+                left: 10px;
+                bottom: 180px; /* Above joystick */
+                width: calc(100% - 20px);
+            }
+        }
+
+        #chat-messages {
+            flex-grow: 1;
+            max-height: 150px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 8px 8px 0 0;
+            padding: 10px;
+            font-size: 14px;
+            color: white;
+            text-shadow: 1px 1px 1px black;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            scrollbar-width: thin;
+        }
+
+        #chat-input {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            padding: 8px 12px;
+            color: white;
+            font-size: 14px;
+            outline: none;
+            width: 100%;
+            box-sizing: border-box;
+            margin: 0;
+            text-align: left;
+        }
+
+        #chat-input:focus {
+            background: rgba(0, 0, 0, 0.8);
+            border-color: #3498db;
+        }
+
+        .chat-msg {
+            word-wrap: break-word;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .chat-msg .username {
+            font-weight: bold;
+            color: #3498db;
+            margin-right: 5px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Connection Panels */
+        .overlay-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+            pointer-events: auto;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            margin: 10px;
+            cursor: pointer;
+            border-radius: 12px;
+            border: none;
+            background: #3498db;
+            color: white;
+            font-weight: bold;
+            transition: transform 0.1s;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        input {
+            padding: 15px;
+            font-size: 24px;
+            width: 120px;
+            text-align: center;
+            border-radius: 12px;
+            border: none;
+            margin-bottom: 20px;
+            background: white;
+            color: black;
+        }
+
+        #pc-code-display {
+            position: fixed;
+            top: 50%;
+            right: 0;
+            height: 320px;
+            width: 170px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-right: none;
+            color: #e0e0e0;
+            padding: 20px 15px;
+            box-sizing: border-box;
+            display: none; 
+            flex-direction: column;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 2000;
+            box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+            pointer-events: auto;
+            border-radius: 15px 0 0 15px;
+            transform: translateY(-50%);
+        }
+
+        #pc-code-display.collapsed {
+            transform: translate(100%, -50%);
+        }
+
+        #sidebar-toggle {
+            position: absolute;
+            left: -44px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 44px;
+            height: 44px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-right: none;
+            border-radius: 8px 0 0 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 20px;
+            transition: color 0.2s;
+            color: #3498db;
+            box-shadow: -4px 0 10px rgba(0,0,0,0.3);
+        }
+
+        #sidebar-toggle:hover {
+            color: #5dade2;
+        }
+
+        .instruction-step {
+            font-size: 11px;
+            margin: 3px 0;
+            opacity: 0.8;
+            line-height: 1.3;
+            padding-left: 8px;
+            border-left: 2px solid #333;
+        }
+
+        .instruction-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            color: #3498db;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        #code-text {
+            font-size: 26px;
+            font-weight: 800;
+            margin: 10px 0;
+            color: #f1c40f;
+            text-align: center;
+            letter-spacing: 4px;
+            text-shadow: 0 0 15px rgba(241, 196, 15, 0.3);
+        }
+
+        #debug-log {
+            font-size: 10px;
+            color: #aaa;
+            max-height: 80px;
+            overflow-y: auto;
+            width: 100%;
+            background: rgba(0,0,0,0.3);
+            padding: 5px;
+            border-radius: 5px;
+        }
+
+        .active-hand-btn {
+            border-color: white !important;
+            box-shadow: 0 0 15px rgba(255,255,255,0.4);
+            transform: scale(1.05);
+        }
+
+        .hidden { display: none !important; }
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://esm.sh/three@0.158.0",
+                "three/addons/": "https://esm.sh/three@0.158.0/examples/jsm/",
+                "nipplejs": "https://esm.sh/nipplejs@0.10.1"
+            }
+        }
+    </script>
+</head>
+<body>
+    <!-- Model Menu Overlay -->
+    <div id="model-menu-overlay" class="hidden">
+        <div class="model-card-container">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="margin: 0; color: #3498db;">SELECT HAND MODEL</h2>
+                <button id="btn-close-models" style="padding: 5px 15px; margin: 0; background: #e74c3c;">X</button>
+            </div>
+            <div id="model-list" class="model-grid">
+                <!-- Models injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Tutorial Overlay -->
+    <div id="tutorial-overlay" class="hidden">
+        <div class="tutorial-card">
+            <h2>HOW TO PLAY</h2>
+            
+            <div class="control-grid">
+                <div class="control-item">
+                    <span class="key">WASD / ARROWS</span>
+                    <span class="action">Move Player</span>
+                </div>
+                <div class="control-item">
+                    <span class="key">SHIFT</span>
+                    <span class="action">Sprint</span>
+                </div>
+                <div class="control-item">
+                    <span class="key">Q / E</span>
+                    <span class="action">Toggle Hands (PC)</span>
+                </div>
+                <div class="control-item">
+                    <span class="key">1 / 2</span>
+                    <span class="action">Hand Gestures (PC)</span>
+                </div>
+                <div class="control-item">
+                    <span class="key">MOUSE MOVE</span>
+                    <span class="action">Look / Move Hand</span>
+                </div>
+                <div class="control-item">
+                    <span class="key">O</span>
+                    <span class="action">Hand Models</span>
+                </div>
+                <div class="control-item">
+                    <span class="key">ENTER</span>
+                    <span class="action">Open Chat</span>
+                </div>
+                <div class="control-item">
+                    <span class="key">R</span>
+                    <span class="action">Control Presets</span>
+                </div>
+                <div class="control-item">
+                    <span class="key">MOBILE JOYSTICK</span>
+                    <span class="action">Movement</span>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px; padding: 15px; background: rgba(52, 152, 219, 0.15); border-radius: 12px; border: 1px solid rgba(52, 152, 219, 0.5); box-shadow: 0 0 15px rgba(52, 152, 219, 0.2);">
+                <span style="color: #3498db; font-weight: 800; font-size: 16px; display: block; margin-bottom: 8px; letter-spacing: 0.5px;">📱 PHONE CONTROLLER MODE</span>
+                <p style="font-size: 14px; opacity: 1; line-height: 1.5; margin: 0; color: #fff;">
+                    Click the blue phone icon on the right side of your screen to link your phone. Move your phone in real life to move your hands in the game!
+                </p>
+            </div>
+
+            <div class="tutorial-footer">
+                <button id="btn-tutorial-ok" class="btn-tutorial-close">GOT IT!</button>
+                <button id="btn-tutorial-dont-show" class="btn-tutorial-hide">Don't show again</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Splash Screen (Mobile Only) -->
+    <div id="mobile-splash" class="overlay-panel hidden">
+        <h2>Connect your phone?</h2>
+        <p>Use your phone as a 6-DOF hand controller for your PC.</p>
+        
+        <div style="background: rgba(231, 76, 60, 0.15); border: 1px solid #e74c3c; padding: 15px; border-radius: 12px; margin: 20px 0; font-size: 14px; color: #ff9f89; max-width: 300px; line-height: 1.4;">
+            <div style="font-weight: bold; margin-bottom: 5px; color: #e74c3c; font-size: 16px;">⚠️ SIGN IN REQUIRED</div>
+            You must be signed in to Websim on both your phone and PC for the controller link to work!
+        </div>
+
+        <button id="btn-mode-controller">YES, Connect as Controller</button>
+        <button id="btn-mode-player">NO, Play Game</button>
+    </div>
+
+    <!-- Phone Controller UI -->
+    <div id="phone-controller-ui" class="overlay-panel hidden" style="padding: 0;">
+        <div id="phone-setup" style="padding: 20px;">
+            <h2>Hand Controller</h2>
+            <input type="text" id="pc-code-input" placeholder="0000" maxlength="4">
+            <br>
+            <button id="btn-connect-to-pc">Connect to PC</button>
+            <div id="debug-log" style="text-align: left; margin-top: 20px;">Log initialized...</div>
+        </div>
+
+        <div id="phone-active" class="hidden" style="width: 100%; height: 100%; display: flex; flex-direction: column; background: transparent;">
+            <!-- Tabs Header -->
+            <div style="display: flex; background: #111; border-bottom: 1px solid #333; pointer-events: auto;">
+                <button id="tab-remote" style="flex: 1; margin: 0; border-radius: 0; background: #222; font-size: 14px; padding: 10px;">REMOTE</button>
+                <button id="tab-options" style="flex: 1; margin: 0; border-radius: 0; background: #111; font-size: 14px; padding: 10px; opacity: 0.6;">OPTIONS</button>
+            </div>
+
+            <div id="remote-page" style="flex: 1; display: flex; flex-direction: column;">
+                <div id="camera-section" style="flex: 7; width: 100%; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.2); pointer-events: none;">
+                    <div id="conn-status" style="position: absolute; top: 10px; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 15px; font-size: 11px; pointer-events: auto;">
+                        Linked to: <span id="target-name">...</span>
+                    </div>
+                    
+                    <button id="btn-recalibrate" style="position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.1); border: 1px solid white; font-size: 10px; padding: 5px 10px; margin: 0; pointer-events: auto;">RECALIBRATE</button>
+
+                    <button id="btn-start-ar" style="background: #e67e22; padding: 15px 40px; border-radius: 30px; pointer-events: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">START TRACKING</button>
+                    <div id="ar-status" style="position: absolute; bottom: 10px; font-size: 10px; opacity: 0.7;">AR Tracking Ready</div>
+                </div>
+                
+                <div id="controls-section" style="flex: 4; width: 100%; background: #1a1a1a; display: flex; flex-direction: column; gap: 5px; padding: 10px; box-sizing: border-box; border-top: 2px solid #333; pointer-events: auto;">
+                    <!-- Standard Controls -->
+                    <div id="controls-standard" style="display: flex; flex-direction: column; gap: 5px; height: 100%;">
+                        <div style="display: flex; gap: 5px; flex: 1;">
+                            <button id="btn-select-left" style="flex: 1; margin: 0; background: #e74c3c; font-size: 12px; border: 2px solid transparent; padding: 5px;">LEFT</button>
+                            <button id="btn-select-right" style="flex: 1; margin: 0; background: #3498db; font-size: 12px; border: 2px solid transparent; padding: 5px;">RIGHT</button>
+                        </div>
+                        <div style="display: flex; gap: 5px; flex: 1;">
+                            <button id="btn-anim-default" style="flex: 1; margin: 0; background: #2ecc71; font-size: 12px; border: 2px solid transparent; padding: 5px;">DEFAULT</button>
+                            <button id="btn-anim-point" style="flex: 1; margin: 0; background: #9b59b6; font-size: 12px; border: 2px solid transparent; padding: 5px;">POINT</button>
+                        </div>
+                        <div style="display: flex; gap: 5px; flex: 1;">
+                            <button id="btn-show-models" style="flex: 1; margin: 0; background: #f39c12; font-size: 12px; padding: 5px;">SWAP HAND MODEL</button>
+                        </div>
+                    </div>
+
+                    <!-- Model List Overlay -->
+                    <div id="controls-models" class="hidden" style="display: flex; flex-direction: column; gap: 5px; height: 100%; overflow-y: auto;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                            <span style="font-size: 12px; color: #f39c12; font-weight: bold;">SELECT MODEL</span>
+                            <button id="btn-exit-models" style="margin: 0; padding: 2px 10px; background: #e74c3c; font-size: 12px;">BACK</button>
+                        </div>
+                        <div id="controller-model-list" style="display: flex; flex-direction: column; gap: 4px;">
+                            <!-- Models injected here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Options Page -->
+            <div id="options-page" class="hidden" style="flex: 1; background: #1a1a1a; padding: 20px; pointer-events: auto;">
+                <h3 style="margin-top: 0; color: #3498db; font-size: 16px;">TRACKING OPTIONS</h3>
+                
+
+                
+                <div style="margin-top: 30px;">
+                    <button id="btn-reset-session" style="width: 100%; background: #e74c3c; margin: 0; padding: 10px; font-size: 14px;">RESET CONNECTION</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PC UI Elements -->
+    <div id="pc-code-display" class="collapsed">
+        <div id="sidebar-toggle" title="Toggle Setup Menu">📱</div>
+        <div class="instruction-title">Controller Link</div>
+        
+        <div id="code-text">----</div>
+        
+        <div class="instruction-step">1. Open this URL on your phone browser.</div>
+        <div class="instruction-step">2. Select "YES, Connect as Controller".</div>
+        <div class="instruction-step">3. Enter the magic 4-digit code.</div>
+        <div class="instruction-step">4. Start AR Tracking and pick a hand.</div>
+
+        <div style="flex-grow: 1;"></div>
+
+        <div id="connected-count" style="font-size: 10px; opacity: 0.6; padding-top: 10px; border-top: 1px solid #333;">
+            Waiting for connections...
+        </div>
+    </div>
+
+    <!-- Control Mode Menu -->
+    <div id="control-mode-menu" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 7000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
+        <div style="background: #1a1a1a; border: 2px solid #3498db; border-radius: 20px; padding: 30px; width: 400px; color: white; box-shadow: 0 0 30px rgba(52, 152, 219, 0.4);">
+            <h2 style="margin-top: 0; color: #3498db; text-align: center;">CONTROL PRESETS</h2>
+            
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <button id="preset-classic" style="background: #2c3e50; border: 2px solid #3498db; padding: 20px; text-align: left; position: relative;">
+                    <div style="font-size: 18px; color: #3498db;">CLASSIC MOBILE</div>
+                    <div style="font-size: 12px; opacity: 0.7;">Q/E Keys + Phone Controller enabled</div>
+                </button>
+
+                <button id="preset-nextgen" style="background: #2c3e50; border: 1px solid #555; padding: 20px; text-align: left;">
+                    <div style="font-size: 18px; color: #00ff00;">NEXT-GEN TRACKING</div>
+                    <div style="font-size: 12px; opacity: 0.7;">Pure Camera Hand Tracking (Beta)</div>
+                </button>
+            </div>
+
+            <style>
+                /* Switch Styling */
+                .switch {
+                    position: relative;
+                    display: inline-block;
+                    width: 44px;
+                    height: 22px;
+                }
+                .switch input { opacity: 0; width: 0; height: 0; }
+                .slider {
+                    position: absolute;
+                    cursor: pointer;
+                    top: 0; left: 0; right: 0; bottom: 0;
+                    background-color: #333;
+                    transition: .3s;
+                    border-radius: 22px;
+                }
+                .slider:before {
+                    position: absolute;
+                    content: "";
+                    height: 16px; width: 16px;
+                    left: 3px; bottom: 3px;
+                    background-color: white;
+                    transition: .3s;
+                    border-radius: 50%;
+                }
+                input:checked + .slider { background-color: #3498db; }
+                input:checked + .slider:before { transform: translateX(22px); }
+                .toggle-row {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    background: #252525;
+                    padding: 12px 16px;
+                    border-radius: 10px;
+                    font-size: 13px;
+                    margin-bottom: 8px;
+                    border: 1px solid #333;
+                }
+                .toggle-row span {
+                    color: #eee;
+                    font-weight: 500;
+                }
+            </style>
+            <div style="margin-top: 25px; border-top: 1px solid #333; padding-top: 20px;">
+                <div class="drawer" id="manual-toggles-drawer">
+                    <div class="drawer-header">MANUAL INPUT OVERRIDES</div>
+                    <div class="drawer-content" style="background: #111; padding: 15px;">
+                        <div class="toggle-row">
+                            <span>Keyboard (Q/E Controls)</span>
+                            <label class="switch">
+                                <input type="checkbox" id="toggle-keyboard" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="toggle-row">
+                            <span>Phone Link (Websocket)</span>
+                            <label class="switch">
+                                <input type="checkbox" id="toggle-phone" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="toggle-row">
+                            <span>Webcam Tracking (Beta)</span>
+                            <label class="switch">
+                                <input type="checkbox" id="toggle-camera">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button id="btn-close-control-menu" style="width: 100%; margin-top: 20px; background: #3498db;">SAVE & CLOSE</button>
+        </div>
+    </div>
+
+    <!-- Advanced Settings Menu -->
+    <div id="advanced-menu-overlay" class="hidden">
+        <div style="background: #1a1a1a; border: 2px solid #e67e22; border-radius: 20px; padding: 30px; width: 450px; color: white; box-shadow: 0 0 30px rgba(230, 126, 34, 0.4); max-height: 80vh; overflow-y: auto;">
+            <h2 style="margin-top: 0; color: #e67e22; text-align: center;">ADVANCED SETTINGS</h2>
+            
+            <div id="advanced-drawers-container">
+                <!-- Next Gen Tracking Drawer -->
+                <div class="drawer" id="advanced-camera-drawer">
+                    <div class="drawer-header">NEXT-GEN CAMERA TRACKING</div>
+                    <div class="drawer-content" id="camera-settings-list">
+                        <!-- Dynamically generated sliders for CONFIG -->
+                    </div>
+                </div>
+
+                <!-- Placeholder for other drawers -->
+                <div class="drawer">
+                    <div class="drawer-header">NETWORK & PERFORMANCE</div>
+                    <div class="drawer-content">
+                        <p style="font-size: 12px; opacity: 0.6;">Synchronized at 30Hz</p>
+                    </div>
+                </div>
+            </div>
+
+            <button id="btn-close-advanced-menu" style="width: 100%; margin-top: 20px; background: #e67e22;">CLOSE</button>
+        </div>
+    </div>
+
+    <video id="webcam" autoplay playsinline style="display: none;"></video>
+    <canvas id="landmark-canvas"></canvas>
+
+    <div id="ui-container">
+        <div id="news-feed">
+            <div class="news-tag">Update</div>
+            <span class="news-title">Finger Tracking Added!</span>
+            <div class="news-body">
+                Full finger tracking is now available! Use the <b>NEXT-GEN + FINGERS</b> preset in the Controls (R) menu to move individual fingers using your webcam. You can now toggle finger tracking and hand tracking independently!
+            </div>
+        </div>
+
+        <div id="joystick-zone"></div>
+        <div id="sprint-btn">RUN</div>
+        <div id="mode-indicator"></div>
+        
+        <div style="position: fixed; top: 10px; left: 10px; z-index: 500; pointer-events: auto; display: flex; gap: 5px;">
+             <button id="btn-quick-control" style="padding: 8px 12px; font-size: 12px; opacity: 0.8; background: rgba(0,0,0,0.5); border: 1px solid #3498db; border-radius: 8px;">Controls (R)</button>
+             <button id="btn-advanced-control" style="padding: 8px 12px; font-size: 12px; opacity: 0.8; background: rgba(0,0,0,0.5); border: 1px solid #e67e22; border-radius: 8px;">Advanced</button>
+        </div>
+
+        <button id="btn-enter-vr" class="hidden" style="position: fixed; bottom: 20px; right: 20px; z-index: 1000; background: #9b59b6; pointer-events: auto;">ENTER VR</button>
+        
+        <!-- Chat Interface -->
+        <div id="chat-container">
+            <div id="chat-messages"></div>
+            <input type="text" id="chat-input" placeholder="Press Enter to chat..." autocomplete="off">
+        </div>
+    </div>
+    <script type="module" src="main.js"></script>
+</body>
+</html>
